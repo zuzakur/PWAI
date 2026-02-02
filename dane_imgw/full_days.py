@@ -16,6 +16,32 @@ stacje_nfull = ID[~mask_full_history]
 print(stacje_full)
 print(stacje_nfull)
 
+#2.2Prezentacja graficzna ilości pomairów wybranej stacji
+wybrana_stacja = stacje_nfull[10]
+print(f"Analiza stacji: {wybrana_stacja}")
+
+data_subset = np.genfromtxt(filename, dtype=int, delimiter=None, usecols=(0, 2, 3), encoding="cp1250")
+maska_stacji = data_subset[:, 0] ==int(wybrana_stacja)
+dane_stacji = data_subset[maska_stacji]
+
+years = np.arange(2001, 2024)
+months = np.arange(1, 13)
+macierz_pomiarów = np.zeros((len(years), len(months)))
+
+for i, rok in enumerate(years):
+    for j, miesiac in enumerate(months):
+      warunek = (dane_stacji[:, 1] == rok) & (dane_stacji[:, 2] == miesiac)
+      macierz_pomiarów[i, j] = np.sum(warunek)
+
+plt.figure
+plt.imshow(macierz_pomiarów)
+plt.colorbar(label='Liczba pomiarów w miesiącu')
+plt.xticks(np.arange(len(months)), months)
+plt.yticks(np.arange(len(years)), years)
+plt.xlabel('Miesiąc')
+plt.ylabel('Rok')
+plt.show()
+
 #2.3 wykres średniej dziennej temperatury dla stacji z pełną historią
 dni = []
 średnie_temperatury = []
@@ -43,6 +69,28 @@ plt.ylabel('Średnia temperatura')
 plt.grid(True)
 plt.show()
 
+#2.4Minimalna i maksymalna temperatura
+data_subset = np.genfromtxt(filename, dtype=str, delimiter=None, usecols=(0, 1, 2, 3, 4, 5, 6), encoding="cp1250")
+
+t_min_values = data_subset[:, 6].astype(float)
+t_max_values = data_subset[:, 5].astype(float)
+min_temp = np.min(t_min_values)
+max_temp = np.max(t_max_values)
+
+maska_min = (t_min_values == min_temp)
+maska_max = (t_max_values == max_temp)
+
+rekordy_min = data_subset[maska_min]
+rekordy_max = data_subset[maska_max]
+
+for k in rekordy_min:
+    print(f"Stacja: {k[0]}, {k[1]}")
+    print(f"Data: {k[4]}/{k[3]}/{k[2]}")
+
+for k in rekordy_max:
+    print(f"Stacja: {k[0]},{k[1]}")
+    print(f"Data: {k[4]}/{k[3]}/{k[2]}")
+    
 #2.5a różnica dziennych średnich temperatur dwóch stacji
 import numpy as np
 import matplotlib.pyplot as plt
