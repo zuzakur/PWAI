@@ -132,3 +132,53 @@ plt.xlabel('Dzień')
 plt.ylabel('Różnica')
 plt.grid(True)
 plt.show()
+
+# 3.1 Wczytanie danych - dodajemy skip_header=1
+full_data = np.genfromtxt(filename, dtype=float, delimiter=None,usecols=(0, 2, 3, 4, 7), encoding="cp1250")
+wybrana_stacja = 249190560
+
+maska_stacji = full_data[:, 0] == wybrana_stacja
+dane_stacji = full_data[maska_stacji]
+
+temperatury = dane_stacji[:, 4]
+
+
+srednia = np.mean(temperatury)
+sigma = np.std(temperatury)
+
+prog = 3
+maska_anomalii = np.abs(temperatury - srednia) > prog * sigma
+anomalie = dane_stacji[maska_anomalii]
+
+
+print(f"Analiza dla stacji {wybrana_stacja}")
+print(f"Średnia temperatura: {srednia:.2f}°C")
+print(f"Odchylenie standardowe: {sigma:.2f}°C")
+print(f"Liczba anomalii: {len(anomalie)}\n")
+
+for a in anomalie[:5]:
+    rok = int(a[1])
+    miesiac = int(a[2])
+    dzien = int(a[3])
+    temp = a[4]
+    print(f"Anomalia: {dzien:02d}.{miesiac:02d}.{rok} – {temp:.1f}°C")
+
+x = np.arange(len(temperatury))
+
+plt.figure(figsize=(10, 5))
+
+plt.plot(x, temperatury, '.', label="Temperatura")
+
+plt.axhline(srednia, linestyle='--', label='Średnia')
+
+plt.axhline(srednia + 3*sigma, linestyle=':', label='+3sigma')
+plt.axhline(srednia - 3*sigma, linestyle=':', label='−3sigma')
+
+plt.plot(x[maska_anomalii], temperatury[maska_anomalii],'o', label='Anomalie')
+plt.xlabel("Kolejne obserwacje")
+plt.ylabel("Temperatura [°C]")
+plt.title(f"Anomalie temperatury – stacja {wybrana_stacja}")
+plt.legend()
+plt.grid(True)
+
+plt.show()
