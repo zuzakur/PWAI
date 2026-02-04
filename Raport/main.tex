@@ -1,0 +1,268 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[polish]{babel}
+\usepackage[T1]{fontenc} 
+\usepackage{listings, amssymb, amsmath, geometry, hyperref, verbatim, float, tikz, setspace, fancybox}
+
+\definecolor{darkgreen}{rgb}{0, 0.5, 0}
+\definecolor{darkblue}{rgb}{0, 0, 0.5}
+\lstset{
+	basicstyle={\ttfamily\small}, frame=single, language=Python, framexleftmargin=0pt,
+	commentstyle=\color{darkgray}\textit, keywordstyle=\color{darkblue}\bfseries, stringstyle=\color{darkgreen}, showstringspaces=false,
+     literate={ą}{{\k a}}1
+	{Ą}{{\k A}}1
+	{ż}{{\. z}}1
+	{Ż}{{\. Z}}1
+	{ź}{{\' z}}1
+	{Ź}{{\' Z}}1
+	{ć}{{\' c}}1
+	{Ć}{{\' C}}1
+	{ę}{{\k e}}1
+	{Ę}{{\k E}}1
+	{ó}{{\' o}}1
+	{Ó}{{\' O}}1
+	{ń}{{\' n}}1
+	{Ń}{{\' N}}1
+	{ś}{{\' s}}1
+	{Ś}{{\' S}}1
+	{ł}{{\l}}1
+	{Ł}{{\L}}1
+    }
+\geometry{margin=3cm}
+
+
+\title{Projekt zaliczeniowy (Raport) - Podstawowy Warsztat AI}
+\author{Zuzanna Kurek i Szymon Gajdziszewski}
+\date{Styczeń 2026}
+\begin{document}
+\maketitle
+\tableofcontents
+
+\section{Wstęp}
+Projekt obejmuje pobranie i skonsolidowanie historycznych danych pogodowych udostępnianych przez Instytut Meteorologii i Gospodarki Wodnej (IMGW) oraz wykonanie prostej analizy wybranych danych. W poniższym raporcie zostały opisane 
+
+\begin{itemize}
+    \item wykonane kroki;
+    \item fragmenty użytego kodu;
+    \item uzyskane w konsekwencji wyniki;
+    \item oraz wyciągnięte wnioski.
+\end{itemize}
+
+\newpage
+
+\section{Konsolidacja danych}
+\subsection{Pobieranie}
+
+Pliki do późniejszej analizy należało pobrać ze strony o adresie \url{https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/dane_meteorologiczne/dobowe/klimat/}. Do tego celu napisano krótki skrypt w Pythonie. Zaczęto od stworzenia docelowego folderu:
+
+\begin{lstlisting}
+OUTPUT_DIR = "dane_imgw"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+\end{lstlisting}
+
+Następnie, za pomocą pętli \texttt{for}, biblioteki \texttt{urllib.request} i \texttt{zipfile}, pobrano osobno pliki zip z każdego miesiąca każdego roku i rozpakowano je do \verb|dane_imgw|.
+
+\subsection{Scalanie}
+
+Napisano skrypt w Pythonie, w którym zaczęto od stworzenia pustej listy o odpowiednim rozmiarze:
+
+\begin{lstlisting}
+full_data = np.empty((0, 18), dtype=object)
+\end{lstlisting}
+
+Następnie pętlą \texttt{for} wpisano do niej odpowiednie dane z wcześniej uzyskanych plików:
+
+\begin{lstlisting}
+for year in range(2001, 2024):
+    for month in range(1, 13):
+        filename = f"k_d_{month:02d}_{year}.csv"
+        data = np.loadtxt(filename, delimiter=',', dtype=str,
+        encoding="cp1250", quotechar='"')
+        full_data = np.vstack((full_data, data))
+\end{lstlisting}
+
+Usunięto zbędnę kolumny przy użyciu \texttt{np.delete}, usunięto cudzysłowia i zapisano do nowego pliku \texttt{.csv}.
+
+\newpage
+
+\section{Proste charakterystyki i statystyki danych}
+
+\subsection{Stacje z pełną historią danych}
+
+Kluczowym krokiem było odpowiednie wczytanie danych w następujący sposób:
+
+\begin{lstlisting}
+station_ids = np.genfromtxt(filename, dtype=str, delimiter=None,
+usecols = 0, encoding="cp1250", filling_values="")
+\end{lstlisting}
+
+\texttt{usecols = 0} pozwala na wczytanie jedynie pierwszej kolumny (a więc tej zawierającej numer stacji. Następnie zliczono ilość występowania każdego numeru i sprawdzeniu czy jest równa \texttt{8400} (ponieważ tyle wystąpień powinna mieć stacja, która posiada pełną historię). Do tego użyte zostało \texttt{np.unique} i maski:
+
+\begin{lstlisting}
+ID, counts = np.unique(station_ids, return_counts=True)
+
+full_days = 8400
+mask_full_history = counts == full_days
+stacje_full = ID[mask_full_history]
+stacje_nfull = ID[~mask_full_history]
+\end{lstlisting}
+
+\newpage
+
+\subsection{Prezentacja graficzna ilości pomairów wybranej stacji}
+
+Za pomocą funkcji \texttt{np.genfromtxt} wczytano kolumny odpowiadające za numer ID stacji, rok oraz miesiąc. Stosując maskę logiczną oddzielono dane pasujące tylko do analizowanej stacji. Zagnieżdżoną pętlą dla każdego miesiąca w każdym roku zaliczono liczbę wystąpień pomariarów. Wynik zapisywany jest w odpowiedniej komórce wcześniej zrobionej macierzy $23 \times 12$. 
+
+\begin{lstlisting}
+for i, rok in enumerate(years):
+for j, miesiac in enumerate(months):
+    warunek = (dane_stacji[:, 1] == rok) & (dane_stacji[:, 2] == miesiac)
+    macierz_pomiarów[i, j] = np.sum(warunek)
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{wykres10.png}
+    \caption{Wykres ilości pomiarów stacji 249190480}
+    \label{fig:Wykres ilości pomiarów stacji 249190480}
+\end{figure}
+
+Do sporządzenia wykresu stacji o ID 249190480 użyto 
+
+\begin{lstlisting}
+plt.colorbar(label='Liczba pomiarów w miesiącu')
+plt.xticks(np.arange(len(months)), months)
+plt.yticks(np.arange(len(years)), years)
+\end{lstlisting}
+
+\subsection{Wykres średniej dziennej temperatury w zależności
+od liczby dni, jakie upłynęły od 01.01.2001 (wersja dokładna)}
+
+Po wczytaniu danych za pomocą \texttt{np.genfromtxt} stworzono maski:
+
+\begin{lstlisting}
+maska_stacji = data_subset[:, 0] ==int(wybrana_stacja)
+dane_stacji = data_subset[maska_stacji]
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{wykres_s.png}
+    \caption{Wykres średniej dziennej temperatury w zależności
+od liczby dni, jakie upłynęły od 01.01.2001}
+    \label{fig:wykres}
+\end{figure}
+
+\subsection{Minimalna i maksymalna temperatura}
+
+Wybrano kolumny odpowiadające za minimalną i maksymalną temperaturę, następnie wyszukano odpowiednio najmniejszych i największych wartości. Maski umożliwiły na znalezienie wiersza, w którym znajduje się wartość i z tych wierszy odczytano potrzebne dane (ID stacji, nazwę stacji, dzień, miesiąc, rok) z odpowiednich kolumn.
+Użycie masek:
+
+\begin{lstlisting}
+maska_min = (t_min_values == min_temp)
+maska_max = (t_max_values == max_temp)
+rekordy_min = data_subset[maska_min]
+rekordy_max = data_subset[maska_max]
+\end{lstlisting}
+
+Wynik:
+
+\begin{lstlisting}
+Stacja: 249190560, JABŁONKA
+Data: 8/1/2017
+Stacja: 251150060,CEBER
+Data: 08/08/2015
+\end{lstlisting}
+
+\newpage
+
+\subsection{Różnica dziennych średnich temperatur dwóch stacji}
+
+W tym podpunkcie zastosowane zostały maski, pętla \texttt{for} oraz funkcje numpy \texttt{np.argpartition()} i \texttt{np.argsort} do znalezienia indeksów odpowiadającym dniom z największą różnicą średnich temperatur.
+
+\begin{lstlisting}
+top_idx = np.argpartition(s_roznica_temp, -5)[-5:]
+top_idx = top_idx[np.argsort(s_roznica_temp[top_idx])[::-1]]
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{wykres5a.png}
+    \caption{Wykres różnicy średnich temperatur dla dwóch stacji z pełnymi historiami}
+    \label{fig:wykres5a}
+\end{figure}
+
+Skrypt zwraca też odpowiedź na pytanie "W jakich dniach różnice są
+największe?", podając pięć największych wartości:
+
+\begin{itemize}
+\item 5.90 stopni – w dniu 2001 - 1 - 10
+\item 5.90 stopni – w dniu 2001 - 1 - 15
+\item 5.10 stopni – w dniu 2001 - 1 - 11
+\item 5.10 stopni – w dniu 2001 - 1 - 16
+\item 4.50 stopni – w dniu 2001 - 2 - 16
+\end{itemize}
+
+\newpage
+
+\subsection{Wykywanie anomalii}
+
+Anomalię zdefiniowano jako obserwację, dla której wartość temperatury odbiega od średniej temperatury dla danej stacji o więcej niż trzykrotność odchylenia standardowego. Dla stacji o ID 249190560 obliczono średnią temperaturę oraz odchylenie standardowe, a następnie wyznaczono anomalie. 
+
+\begin{lstlisting}
+srednia = np.mean(temperatury)
+sigma = np.std(temperatury)
+prog = 3
+maska_anomalii = np.abs(temperatury - srednia) > prog * sigma
+anomalie = dane_stacji[maska_anomalii]
+\end{lstlisting}
+
+Wykryto 31 anomalii, z których wypisano 5:
+
+\begin{itemize}
+    \item 04.01.2002 – -24.9°C
+    \item25.12.2002 – -24.6°C
+    \item 09.01.2003 – -19.7°C
+    \item 13.02.2003 – -20.0°C
+    \item 25.12.2003 – -19.7°C
+\end{itemize}
+
+oraz sporządzono wykres:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{anomalie.png}
+    \caption{Wykres anomalii}
+    \label{fig:wykres3.6}
+\end{figure}
+
+\newpage
+
+\section{Wnioski}
+
+\subsection {Stacje z pełną historią danych}
+
+Znacznie więcej wykryto stacji z niepełną historią co wskazuje na występowanie wydarzeń typu awarie, sugeruje, że niektóre stacje mogły zostać zamknięte lub otwarte w okresie, który był analizowany
+
+\subsection{Prezentacja graficzna ilości pomairów wybranej stacji}
+
+Dla wybranej stacji można dostrzec, że mniej pomiarów wykonywanych było w miesiące o mniejszej ilości dni (lipiec 2019). Widać też pojedyncze miesiące o mniejszej ilości wykonanych pomiarów (luty), w których najpewniej doszło do awarii lub wykonywano prace konserwacyjne.
+
+\subsection{Wykres średniej dziennej temperatury w zależności
+od liczby dni, jakie upłynęły od 01.01.2001 (wersja dokładna)}
+
+Zgodnie z podejrzeniami średnie temperatury były co roku najniższe w miesiącach zimowych, a najwyższe w letnich. Zaskakujące jest występowanie aż trzech dni w przeciągu analizowanych lat, w których średnia temperatura wynosiła -20 stopni.
+
+\subsection{Minimalna i maksymalna temperatura}
+
+Z uzyskanych danych można zgodnie z przewidywaniami wywnioskować, że najniższa zarejestrowana temperatura panowała w Jabłonce (miejscowość na południu Małopolski) w styczniu, a najwyższa w Ceber (Dolny Śląsk - potencjalnie najcieplejszy obszar w Polsce) w sierpniu.
+
+\subsection{Różnica dziennych średnich temperatur dwóch stacji}
+
+Z wykresu można wywnioskować, że różnica średnich zmierzonych temperatur pomiędzy wybranymi stacjami zawiera się w przedziale od -9 do 6 stopni. Są to istotne różnice, co wstazuje na to prawdopodobny duży dystans pomiędzy dwiema stacjami. Wielkość różnic zmieniała się rocznie z pewną regularnością.
+
+\subsection{Wykywanie anomalii}
+
+Większość pomiarów temperatury mieści się w typowym zakresie wahań wokół średniej, natomiast wykryte anomalie odpowiadają pojedynczym, silnym odchyleniom. Anomalie występują głównie w okresach zimowych i mają charakter sporadyczny.
+
+\end{document}
