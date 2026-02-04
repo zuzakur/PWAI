@@ -133,7 +133,7 @@ plt.ylabel('Różnica')
 plt.grid(True)
 plt.show()
 
-# 3.1 Wczytanie danych - dodajemy skip_header=1
+# 3.1
 full_data = np.genfromtxt(filename, dtype=float, delimiter=None,usecols=(0, 2, 3, 4, 7), encoding="cp1250")
 wybrana_stacja = 249190560
 
